@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --paper: #FBF7EF;
+  --paper-deep: #F5EEDF;
+  --ink: #3F2E1F;
+}
+
+html,
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-noto-serif-kr), "Noto Serif KR", "Nanum Myeongjo", serif;
+  background-image:
+    radial-gradient(rgba(139, 94, 60, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(139, 94, 60, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px, 14px 14px;
+  background-position: 0 0, 7px 7px;
+}
+
+@layer components {
+  .page-card {
+    @apply bg-paper-50 border border-paper-200 rounded-lg shadow-page;
+  }
+  .chip {
+    @apply inline-flex items-center px-3 py-1 rounded-full border border-paper-300 text-ink-700 bg-paper-100 hover:bg-paper-200 transition;
+  }
+  .tab-button {
+    @apply px-4 py-2 text-sm sm:text-base border-b-2 transition-colors;
+  }
+  .tab-button-active {
+    @apply border-accent-dark text-ink-900;
+  }
+  .tab-button-inactive {
+    @apply border-transparent text-ink-700 hover:text-ink-900;
+  }
+}
