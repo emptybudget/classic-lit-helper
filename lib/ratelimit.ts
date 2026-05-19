@@ -1,7 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
-
-export const SEARCH_LIMIT = 5;
+import { SEARCH_LIMIT } from "./constants";
 
 const ADMIN_TTL_SECONDS = 7 * 24 * 60 * 60;
 const ADMIN_KEY_PREFIX = "classic-lit-helper:admin:";

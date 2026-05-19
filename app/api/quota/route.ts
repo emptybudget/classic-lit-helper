@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  SEARCH_LIMIT,
-  getClientIp,
-  getSearchRemaining,
-  isAdmin,
-} from "@/lib/ratelimit";
+import { getClientIp, getSearchRemaining, isAdmin } from "@/lib/ratelimit";
+import { SEARCH_LIMIT } from "@/lib/constants";
 
 export const runtime = "nodejs";
 

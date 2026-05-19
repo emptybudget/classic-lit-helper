@@ -14,6 +14,7 @@ import {
   pushHistory,
   type HistoryItem,
 } from "@/lib/history";
+import { SEARCH_LIMIT } from "@/lib/constants";
 import type {
   DisambiguationOption,
   LiteratureResult,
@@ -106,7 +107,9 @@ function HomePageInner() {
           return;
         }
         if (res.status === 429 || ("rate_limited" in payload && payload.rate_limited)) {
-          setQuota((q) => (q ? { ...q, remaining: 0 } : { remaining: 0, limit: 5 }));
+          setQuota((q) =>
+            q ? { ...q, remaining: 0 } : { remaining: 0, limit: SEARCH_LIMIT },
+          );
           setState({
             kind: "rate_limited",
             message:
@@ -145,7 +148,7 @@ function HomePageInner() {
   }
 
   function handleUnlocked(remaining: number, admin: boolean) {
-    setQuota({ remaining, limit: admin ? -1 : 5, admin });
+    setQuota({ remaining, limit: admin ? -1 : SEARCH_LIMIT, admin });
     setShowUnlock(false);
     if (state.kind === "rate_limited") setState({ kind: "idle" });
   }

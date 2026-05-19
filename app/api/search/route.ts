@@ -4,7 +4,8 @@ import { fetchWikipedia } from "@/lib/wikipedia";
 import { fetchGuardianReviews } from "@/lib/guardian";
 import { fetchCoverUrl } from "@/lib/openlibrary";
 import { summarizeLiterature, translateToEnglishTitle } from "@/lib/gemini";
-import { getClientIp, getRatelimit, isAdmin, SEARCH_LIMIT } from "@/lib/ratelimit";
+import { getClientIp, getRatelimit, isAdmin } from "@/lib/ratelimit";
+import { SEARCH_LIMIT } from "@/lib/constants";
 import { getCachedResult, setCachedResult } from "@/lib/cache";
 
 export const runtime = "nodejs";
@@ -15,12 +16,26 @@ function buildQuotaErrorResponse(err: unknown): NextResponse | null {
   if (!/\b429\b|RESOURCE_EXHAUSTED|quota/i.test(raw)) return null;
 
   const isPerDay = /PerDay/i.test(raw);
+  const limitMatch = raw.match(/limit:\s*"?(\d+)"?/i);
+  const modelMatch = raw.match(/(?<![/\w])model:\s*([a-z0-9.-]+)/i);
   const retryMatch = raw.match(/retry in (\d+(?:\.\d+)?)s/i);
+
+  const limit = limitMatch?.[1];
+  const model = modelMatch?.[1];
   const retrySeconds = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) : null;
 
-  const message = isPerDay
-    ? "AI 서비스(Gemini)의 오늘 무료 한도가 다 됐어요. 내일 다시 시도해 주세요. 이미 한 번 본 작품은 캐시로 바로 다시 볼 수 있어요."
-    : `AI 서비스가 잠시 바빠요. ${retrySeconds ?? 30}초 뒤 다시 시도해 주세요.`;
+  let message: string;
+  if (isPerDay) {
+    const detail =
+      limit && model
+        ? ` (${model} 일일 한도 ${limit}회 도달)`
+        : limit
+          ? ` (일일 한도 ${limit}회 도달)`
+          : "";
+    message = `AI 서비스의 오늘 무료 한도가 다 됐어요${detail}. 내일 다시 시도해 주세요. 이미 한 번 본 작품은 캐시로 바로 다시 볼 수 있어요.`;
+  } else {
+    message = `AI 서비스가 잠시 바빠요. ${retrySeconds ?? 30}초 뒤 다시 시도해 주세요.`;
+  }
 
   return NextResponse.json(
     { error: message, quota_error: true },
