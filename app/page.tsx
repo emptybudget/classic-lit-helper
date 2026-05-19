@@ -1,12 +1,19 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import SearchForm from "@/components/SearchForm";
 import ResultTabs from "@/components/ResultTabs";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import HelpModal from "@/components/HelpModal";
 import UnlockModal from "@/components/UnlockModal";
+import {
+  clearHistory,
+  getHistory,
+  pushHistory,
+  type HistoryItem,
+} from "@/lib/history";
 import type {
   DisambiguationOption,
   LiteratureResult,
@@ -47,6 +54,7 @@ function HomePageInner() {
   const [quota, setQuota] = useState<Quota | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [showUnlock, setShowUnlock] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
   useEffect(() => {
     try {
@@ -54,6 +62,7 @@ function HomePageInner() {
       const hidden = localStorage.getItem(HELP_HIDE_KEY);
       if (hidden !== today) setShowHelp(true);
     } catch {}
+    setHistory(getHistory());
     void fetchQuota();
   }, []);
 
@@ -115,6 +124,7 @@ function HomePageInner() {
 
       if ("data" in payload) {
         setState({ kind: "success", data: payload.data });
+        setHistory(pushHistory(payload.data.title || title));
         if (payload.quota) setQuota(payload.quota);
         else void fetchQuota();
       } else if ("disambiguation" in payload) {
@@ -194,6 +204,34 @@ function HomePageInner() {
           initialValue={initialQuery}
         />
       </section>
+
+      {state.kind === "idle" && history.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm text-ink-700 font-semibold uppercase tracking-wider">
+              최근 본 작품
+            </h2>
+            <button
+              type="button"
+              onClick={() => setHistory(clearHistory())}
+              className="text-xs text-ink-700/70 hover:text-ink-900 underline"
+            >
+              전체 지우기
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {history.map((h) => (
+              <Link
+                key={h.title}
+                href={`/work/${encodeURIComponent(h.title)}`}
+                className="chip text-sm"
+              >
+                {h.title}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {state.kind === "loading" && (
         <section className="page-card">
