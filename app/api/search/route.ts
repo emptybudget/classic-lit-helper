@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchWikipedia } from "@/lib/wikipedia";
-import { summarizeLiterature } from "@/lib/gemini";
+import { summarizeLiterature, translateToEnglishTitle } from "@/lib/gemini";
 import { getClientIp, getRatelimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
@@ -45,7 +45,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "요청 한도 검사에 실패했어요." }, { status: 500 });
   }
 
-  const wiki = await fetchWikipedia(query);
+  let englishTitle = query;
+  try {
+    englishTitle = await translateToEnglishTitle(query);
+  } catch (err) {
+    console.error("translate error", err);
+  }
+
+  const wiki = await fetchWikipedia(query, englishTitle);
   if (!wiki.ko && !wiki.en) {
     return NextResponse.json(
       { error: "한국어/영어 위키백과 모두에서 해당 작품을 찾지 못했어요." },

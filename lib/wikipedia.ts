@@ -3,11 +3,12 @@ export interface WikipediaPage {
   title: string;
   description: string | null;
   extract: string;
+  fullText: string | null;
   url: string;
 }
 
 export interface WikipediaBundle {
-  ko: (WikipediaPage & { fullText: string | null }) | null;
+  ko: WikipediaPage | null;
   en: WikipediaPage | null;
 }
 
@@ -62,6 +63,7 @@ async function getSummary(lang: "ko" | "en", title: string): Promise<WikipediaPa
     title: data.title ?? title,
     description: data.description ?? null,
     extract: data.extract,
+    fullText: null,
     url: data.content_urls?.desktop?.page ?? `https://${lang}.wikipedia.org/wiki/${encoded}`,
   };
 }
@@ -108,16 +110,22 @@ async function getFullText(lang: "ko" | "en", title: string): Promise<string | n
   return text.length > 12000 ? text.slice(0, 12000) : text;
 }
 
-export async function fetchWikipedia(query: string): Promise<WikipediaBundle> {
-  const [ko, en] = await Promise.all([resolvePage("ko", query), resolvePage("en", query)]);
+export async function fetchWikipedia(
+  koQuery: string,
+  enQuery: string,
+): Promise<WikipediaBundle> {
+  const [ko, en] = await Promise.all([
+    resolvePage("ko", koQuery),
+    resolvePage("en", enQuery),
+  ]);
 
-  let koFullText: string | null = null;
-  if (ko) {
-    koFullText = await getFullText("ko", ko.title);
-  }
+  const [koFullText, enFullText] = await Promise.all([
+    ko ? getFullText("ko", ko.title) : Promise.resolve(null),
+    en ? getFullText("en", en.title) : Promise.resolve(null),
+  ]);
 
   return {
     ko: ko ? { ...ko, fullText: koFullText } : null,
-    en: en ?? null,
+    en: en ? { ...en, fullText: enFullText } : null,
   };
 }

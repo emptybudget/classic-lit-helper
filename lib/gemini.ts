@@ -4,7 +4,9 @@ import type { WikipediaBundle } from "@/lib/wikipedia";
 
 const MODEL = "gemini-2.5-flash";
 
-const SYSTEM_PROMPT = `당신은 한국어 고전문학 연구 보조자입니다. 사용자가 제공한 Wikipedia 발췌만을 근거로, 정해진 JSON 스키마에 정확히 맞는 응답 한 개를 반환하세요.
+const TRANSLATE_PROMPT = `당신은 작품 제목 번역기입니다. 사용자가 입력한 작품 제목을 영문 위키백과에서 실제 사용되는 정확한 영어 표제어로 변환해 그 표제어만 반환하세요. 따옴표·구두점·설명·주석·여러 줄 금지. 이미 영어/라틴 알파벳이면 그대로 반환.`;
+
+const SYSTEM_PROMPT = `당신은 한국어 고전문학 연구 보조자입니다. 사용자가 제공한 Wikipedia 발췌만을 근거로, 정해진 JSON 스키마에 정확히 맞는 응답 한 개를 반환하세요. 영문 발췌가 주어지면 그 내용을 자연스러운 한국어로 번역하여 채우세요.
 
 [엄격한 규칙]
 - 출력은 오직 하나의 JSON 객체. 마크다운, 코드펜스, 설명 문장, 인사말 금지.
@@ -51,8 +53,20 @@ function stripFences(raw: string): string {
 
 function buildSourceBlock(wiki: WikipediaBundle): string {
   const lines: string[] = [];
+  if (wiki.en) {
+    lines.push(`[PRIMARY · English Wikipedia] Title: ${wiki.en.title}`);
+    if (wiki.en.description) lines.push(`Description: ${wiki.en.description}`);
+    lines.push(`URL: ${wiki.en.url}`);
+    lines.push("Extract:");
+    lines.push(wiki.en.extract);
+    if (wiki.en.fullText) {
+      lines.push("Body excerpt:");
+      lines.push(wiki.en.fullText);
+    }
+    lines.push("");
+  }
   if (wiki.ko) {
-    lines.push(`[한국어 위키백과] 제목: ${wiki.ko.title}`);
+    lines.push(`[SECONDARY · 한국어 위키백과] 제목: ${wiki.ko.title}`);
     if (wiki.ko.description) lines.push(`설명: ${wiki.ko.description}`);
     lines.push(`URL: ${wiki.ko.url}`);
     lines.push("요약:");
@@ -63,15 +77,31 @@ function buildSourceBlock(wiki: WikipediaBundle): string {
     }
     lines.push("");
   }
-  if (wiki.en) {
-    lines.push(`[English Wikipedia] Title: ${wiki.en.title}`);
-    if (wiki.en.description) lines.push(`Description: ${wiki.en.description}`);
-    lines.push(`URL: ${wiki.en.url}`);
-    lines.push("Extract:");
-    lines.push(wiki.en.extract);
-    lines.push("");
-  }
   return lines.join("\n");
+}
+
+export async function translateToEnglishTitle(query: string): Promise<string> {
+  if (!/[ㄱ-힝一-鿿]/.test(query)) return query;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY가 설정되지 않았어요.");
+  }
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: TRANSLATE_PROMPT,
+    generationConfig: { temperature: 0, maxOutputTokens: 64 },
+  });
+
+  try {
+    const result = await model.generateContent(`작품 제목: ${query}`);
+    const text = result.response.text().trim().replace(/^["'`]+|["'`]+$/g, "");
+    return text || query;
+  } catch {
+    return query;
+  }
 }
 
 export async function summarizeLiterature(
