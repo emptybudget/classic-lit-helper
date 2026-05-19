@@ -1,21 +1,30 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { LiteratureResult } from "@/types/literature";
 import type { WikipediaBundle } from "@/lib/wikipedia";
+import type { GuardianArticle } from "@/lib/guardian";
 
 const MODEL = "gemini-2.5-flash";
 
 const TRANSLATE_PROMPT = `당신은 작품 제목 번역기입니다. 사용자가 입력한 작품 제목을 영문 위키백과에서 실제 사용되는 정확한 영어 표제어로 변환해 그 표제어만 반환하세요. 따옴표·구두점·설명·주석·여러 줄 금지. 이미 영어/라틴 알파벳이면 그대로 반환.`;
 
-const SYSTEM_PROMPT = `당신은 한국어 고전문학 연구 보조자입니다. 사용자가 제공한 Wikipedia 발췌만을 근거로, 정해진 JSON 스키마에 정확히 맞는 응답 한 개를 반환하세요. 영문 발췌가 주어지면 그 내용을 자연스러운 한국어로 번역하여 채우세요.
+const SYSTEM_PROMPT = `당신은 한국어 고전문학 연구 보조자입니다. 사용자가 제공한 Wikipedia 발췌와 (있다면) The Guardian 기사 발췌만을 근거로, 정해진 JSON 스키마에 정확히 맞는 응답 한 개를 반환하세요. 영문 발췌는 자연스러운 한국어로 번역해 채우세요.
 
 [엄격한 규칙]
 - 출력은 오직 하나의 JSON 객체. 마크다운, 코드펜스, 설명 문장, 인사말 금지.
 - 모든 텍스트 필드는 한국어. 고유명사·원문 인용은 원어 유지 허용.
-- Wikipedia 발췌에 명시되지 않은 정보는 절대 지어내지 말 것. 모르면 null 또는 빈 배열.
-- 각 섹션의 sources에는 제공된 Wikipedia URL만 포함. 다른 도메인 금지.
+- 제공된 발췌에 명시되지 않은 정보는 절대 지어내지 말 것. 모르면 null 또는 빈 배열.
+- sources에는 제공된 발췌의 URL만 포함. 다른 도메인 금지.
 - symbols는 발췌에서 근거를 찾을 수 있는 핵심 상징·모티프 0~6개.
-- criticism은 발췌에 평론·해석이 명시되어 있을 때만 채울 것. 없으면 빈 배열.
 - reading_tips는 발췌 내용을 종합한 2~4문장의 한국어 산문. 근거가 부족하면 null.
+
+[평론(criticism) 작성 규칙 — 매우 중요]
+- 영문 위키 본문의 "Themes / Analysis / Critical reception / Reception / Legacy / Influence / Adaptation" 섹션과 The Guardian 기사 발췌를 먼저 살펴 평론·해석을 추출하세요.
+- 기명 비평가가 있으면 그 이름을 critic 필드에 쓰고, 없을 때는 출처 매체(예: "The Guardian", "위키백과 평론 섹션", 작품의 비평사 흐름을 가리키는 일반 표현 "후대 비평")를 쓰세요. 가공의 인명 금지.
+- perspective 필드는 어려운 학술 용어 없이, 친구에게 설명하듯 평이한 한국어 1~2문장(40자 내외)으로 핵심을 짚으세요.
+- quote 필드는 비평가의 실제 말 또는 발췌에 등장한 원문 문장을 그대로 인용(필요하면 한국어로 자연스럽게 번역). 인용 부호 없이 본문만.
+- source 필드는 가능한 한 발췌에 포함된 URL(Wikipedia/Guardian). URL이 없으면 매체·섹션 이름.
+- criticism은 최소 0개, 가급적 2~5개. 발췌에 평론적 단서가 약해도 작품 수용·각색·영향에 대한 기록이 있다면 그것을 평이한 평론 항목으로 정리하세요.
+- 학술지·저널 이름의 나열식 인용 금지. 한 항목은 한 사람/매체의 시각으로 응축.
 
 [JSON 스키마]
 {
@@ -51,7 +60,7 @@ function stripFences(raw: string): string {
   return text.trim();
 }
 
-function buildSourceBlock(wiki: WikipediaBundle): string {
+function buildSourceBlock(wiki: WikipediaBundle, guardian: GuardianArticle[]): string {
   const lines: string[] = [];
   if (wiki.en) {
     lines.push(`[PRIMARY · English Wikipedia] Title: ${wiki.en.title}`);
@@ -60,7 +69,7 @@ function buildSourceBlock(wiki: WikipediaBundle): string {
     lines.push("Extract:");
     lines.push(wiki.en.extract);
     if (wiki.en.fullText) {
-      lines.push("Body excerpt:");
+      lines.push("Body excerpt (section headers preserved as ## / ###):");
       lines.push(wiki.en.fullText);
     }
     lines.push("");
@@ -72,9 +81,22 @@ function buildSourceBlock(wiki: WikipediaBundle): string {
     lines.push("요약:");
     lines.push(wiki.ko.extract);
     if (wiki.ko.fullText) {
-      lines.push("본문 발췌:");
+      lines.push("본문 발췌 (## / ### 헤더 보존):");
       lines.push(wiki.ko.fullText);
     }
+    lines.push("");
+  }
+  if (guardian.length > 0) {
+    lines.push(`[CRITICISM SOURCE · The Guardian Books] ${guardian.length}개 기사`);
+    guardian.forEach((g, i) => {
+      lines.push(`---`);
+      lines.push(`#${i + 1} Title: ${g.title}`);
+      if (g.byline) lines.push(`Byline: ${g.byline}`);
+      if (g.publishedAt) lines.push(`Published: ${g.publishedAt}`);
+      lines.push(`URL: ${g.url}`);
+      if (g.trail) lines.push(`Lede: ${g.trail}`);
+      if (g.body) lines.push(`Body excerpt: ${g.body}`);
+    });
     lines.push("");
   }
   return lines.join("\n");
@@ -107,6 +129,7 @@ export async function translateToEnglishTitle(query: string): Promise<string> {
 export async function summarizeLiterature(
   query: string,
   wiki: WikipediaBundle,
+  guardian: GuardianArticle[] = [],
 ): Promise<LiteratureResult> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -125,11 +148,11 @@ export async function summarizeLiterature(
 
   const userPrompt = `사용자가 검색한 작품 제목: "${query}"
 
-아래 Wikipedia 발췌만을 근거로, 위 JSON 스키마를 준수해 한국어 JSON 한 개를 반환하세요.
+아래 발췌만을 근거로, 위 JSON 스키마를 준수해 한국어 JSON 한 개를 반환하세요. 평론 섹션은 [평론(criticism) 작성 규칙]을 반드시 지키세요.
 
------ Wikipedia 발췌 시작 -----
-${buildSourceBlock(wiki)}
------ Wikipedia 발췌 끝 -----`;
+----- 발췌 시작 -----
+${buildSourceBlock(wiki, guardian)}
+----- 발췌 끝 -----`;
 
   const result = await model.generateContent(userPrompt);
   const text = result.response.text();

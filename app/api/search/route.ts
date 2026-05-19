@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { fetchWikipedia } from "@/lib/wikipedia";
+import { fetchGuardianReviews } from "@/lib/guardian";
 import { summarizeLiterature, translateToEnglishTitle } from "@/lib/gemini";
 import { getClientIp, getRatelimit } from "@/lib/ratelimit";
 
@@ -52,7 +53,11 @@ export async function POST(req: Request) {
     console.error("translate error", err);
   }
 
-  const wiki = await fetchWikipedia(query, englishTitle);
+  const [wiki, guardian] = await Promise.all([
+    fetchWikipedia(query, englishTitle),
+    fetchGuardianReviews(englishTitle).catch(() => []),
+  ]);
+
   if (!wiki.ko && !wiki.en) {
     return NextResponse.json(
       { error: "한국어/영어 위키백과 모두에서 해당 작품을 찾지 못했어요." },
@@ -61,7 +66,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const data = await summarizeLiterature(query, wiki);
+    const data = await summarizeLiterature(query, wiki, guardian);
     return NextResponse.json({ data });
   } catch (err) {
     console.error("gemini error", err);
