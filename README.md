@@ -1,12 +1,12 @@
 # 고전문학 도우미 (Classic Literature Helper)
 
-위키백과·The Guardian 발췌를 **Google Gemini 2.5 Flash Lite**가 정리해, 고전문학 작품 한 편의 **사전지식 · 작가 · 등장인물 · 상징 · 평론**을 한 페이지에 보여 주는 Next.js 14 웹앱입니다. 핵심 인용 배너, 함께 읽을 작품 추천, 검색 결과 캐싱(24h)·공유 URL·두 작품 비교 모드까지 포함합니다.
+위키백과·The Guardian 발췌를 **Google Gemini 3.1 Flash Lite**가 정리해, 고전문학 작품 한 편의 **사전지식 · 작가 · 등장인물 · 상징 · 평론**을 한 페이지에 보여 주는 Next.js 14 웹앱입니다. 핵심 인용 배너, 함께 읽을 작품 추천, 검색 결과 캐싱(24h)·공유 URL·두 작품 비교 모드까지 포함합니다.
 
 ## 기술 스택
 
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
 - 정보 수집: **Wikipedia REST API** (한/영) + (선택) **The Guardian Open Platform**
-- 영어 표제어 변환·요약: **Google Gemini API** (`gemini-2.5-flash-lite`, 무료 티어 약 1,000 RPD)
+- 영어 표제어 변환·요약: **Google Gemini API** (`gemini-3.1-flash-lite`, 무료 티어 500 RPD)
 - Rate limit: **Upstash Redis** (IP당 하루 5회)
 - 배포: **Vercel**
 
@@ -42,7 +42,7 @@
 5. 영문 Wikipedia(주) + 한글 Wikipedia(보조)에서 summary·본문 HTML 발췌. 본문은 "Themes/Reception/Legacy" 등 평론 관련 섹션 우선 추출. disambiguation(동명 항목)이면 후보 목록 반환
 6. Open Library Covers API로 작품 표지 이미지 병렬 fetch
 7. `GUARDIAN_API_KEY`가 있으면 The Guardian Books 섹션에서 평론 기사 발췌 병렬 수집
-8. Gemini 2.5 Flash Lite가 발췌를 근거로 한국어 JSON 한 개로 정리 (사전지식·작가·등장인물·상징·인용·평론·추천 작품·읽기 길잡이)
+8. Gemini 3.1 Flash Lite가 발췌를 근거로 한국어 JSON 한 개로 정리 (사전지식·작가·등장인물·상징·인용·평론·추천 작품·읽기 길잡이)
 9. 결과를 Redis에 24h TTL로 캐싱 (원본 쿼리 키 + 정규화된 작품 제목 키, 양쪽으로 조회 가능)
 10. 5탭 UI + 핵심 인용 배너 + 읽기 길잡이 + 추천 작품 카드로 렌더링
 
