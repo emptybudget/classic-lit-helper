@@ -105,6 +105,9 @@ export async function POST(req: Request) {
   ]);
 
   if (!wiki.ko && !wiki.en) {
+    if (wiki.disambiguation.length > 0) {
+      return NextResponse.json({ disambiguation: wiki.disambiguation });
+    }
     return NextResponse.json(
       { error: "한국어/영어 위키백과 모두에서 해당 작품을 찾지 못했어요." },
       { status: 404 },

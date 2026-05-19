@@ -6,7 +6,11 @@ import ResultTabs from "@/components/ResultTabs";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import HelpModal from "@/components/HelpModal";
 import UnlockModal from "@/components/UnlockModal";
-import type { LiteratureResult, SearchState } from "@/types/literature";
+import type {
+  DisambiguationOption,
+  LiteratureResult,
+  SearchState,
+} from "@/types/literature";
 
 interface Quota {
   remaining: number;
@@ -69,6 +73,7 @@ export default function HomePage() {
       });
       const payload = (await res.json()) as
         | { data: LiteratureResult; quota?: Quota; cached?: boolean }
+        | { disambiguation: DisambiguationOption[] }
         | { error: string; rate_limited?: boolean; quota_error?: boolean; resetIn?: number };
 
       if (!res.ok) {
@@ -101,6 +106,12 @@ export default function HomePage() {
         setState({ kind: "success", data: payload.data });
         if (payload.quota) setQuota(payload.quota);
         else void fetchQuota();
+      } else if ("disambiguation" in payload) {
+        setState({
+          kind: "disambiguation",
+          query: title,
+          candidates: payload.disambiguation,
+        });
       } else {
         setState({ kind: "error", message: "응답 형식이 올바르지 않아요." });
       }
@@ -228,6 +239,40 @@ export default function HomePage() {
           <button
             onClick={() => setState({ kind: "idle" })}
             className="mt-4 text-sm underline text-accent-dark"
+          >
+            처음으로
+          </button>
+        </section>
+      )}
+
+      {state.kind === "disambiguation" && (
+        <section className="page-card p-6 sm:p-8">
+          <h2 className="font-semibold text-ink-900 mb-1">
+            "{state.query}"에 해당하는 작품이 여러 개 있어요
+          </h2>
+          <p className="text-ink-700 text-sm mb-5">정확한 작품을 골라 주세요.</p>
+          <ul className="space-y-2">
+            {state.candidates.map((c, i) => (
+              <li key={`${c.lang}-${c.title}-${i}`}>
+                <button
+                  type="button"
+                  onClick={() => handleSearch(c.title)}
+                  className="w-full text-left p-3 rounded-md bg-paper-50 border border-paper-200 hover:bg-paper-100 hover:border-paper-300 transition"
+                >
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="font-semibold text-ink-900">{c.title}</span>
+                    <span className="text-xs text-ink-700/70 uppercase">{c.lang}</span>
+                  </div>
+                  {c.description && (
+                    <p className="text-sm text-ink-700 mt-1 leading-relaxed">{c.description}</p>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => setState({ kind: "idle" })}
+            className="mt-5 text-sm underline text-accent-dark"
           >
             처음으로
           </button>

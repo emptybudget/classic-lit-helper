@@ -7,9 +7,17 @@ export interface WikipediaPage {
   url: string;
 }
 
+export interface DisambiguationCandidate {
+  lang: "ko" | "en";
+  title: string;
+  description: string;
+  url: string;
+}
+
 export interface WikipediaBundle {
   ko: WikipediaPage | null;
   en: WikipediaPage | null;
+  disambiguation: DisambiguationCandidate[];
 }
 
 const UA = "classic-lit-helper/0.1 (https://github.com/emptybudget/classic-lit-helper)";
@@ -48,39 +56,67 @@ interface SummaryResponse {
   content_urls?: { desktop?: { page?: string } };
 }
 
-interface SearchResponse {
-  pages?: { key: string; title: string }[];
+interface SearchPageResponse {
+  pages?: {
+    key?: string;
+    title?: string;
+    description?: string;
+    excerpt?: string;
+  }[];
 }
 
-async function getSummary(lang: "ko" | "en", title: string): Promise<WikipediaPage | null> {
+interface PageResolution {
+  page: WikipediaPage | null;
+  isDisambiguation: boolean;
+}
+
+async function getSummary(lang: "ko" | "en", title: string): Promise<PageResolution> {
   const encoded = encodeURIComponent(title.replace(/\s+/g, "_"));
   const data = await fetchJson<SummaryResponse>(
     `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encoded}`,
   );
-  if (!data || !data.extract || data.type === "disambiguation") return null;
+  if (!data || !data.extract) return { page: null, isDisambiguation: false };
+  if (data.type === "disambiguation") return { page: null, isDisambiguation: true };
   return {
-    lang,
-    title: data.title ?? title,
-    description: data.description ?? null,
-    extract: data.extract,
-    fullText: null,
-    url: data.content_urls?.desktop?.page ?? `https://${lang}.wikipedia.org/wiki/${encoded}`,
+    page: {
+      lang,
+      title: data.title ?? title,
+      description: data.description ?? null,
+      extract: data.extract,
+      fullText: null,
+      url: data.content_urls?.desktop?.page ?? `https://${lang}.wikipedia.org/wiki/${encoded}`,
+    },
+    isDisambiguation: false,
   };
 }
 
-async function searchTitle(lang: "ko" | "en", query: string): Promise<string | null> {
-  const data = await fetchJson<SearchResponse>(
-    `https://${lang}.wikipedia.org/w/rest.php/v1/search/title?q=${encodeURIComponent(query)}&limit=1`,
+async function searchCandidates(
+  lang: "ko" | "en",
+  query: string,
+  limit: number,
+): Promise<DisambiguationCandidate[]> {
+  const data = await fetchJson<SearchPageResponse>(
+    `https://${lang}.wikipedia.org/w/rest.php/v1/search/page?q=${encodeURIComponent(query)}&limit=${limit}`,
   );
-  return data?.pages?.[0]?.title ?? null;
+  const pages = data?.pages ?? [];
+  return pages
+    .filter((p): p is { key: string; title: string; description?: string; excerpt?: string } =>
+      typeof p.title === "string" && typeof p.key === "string",
+    )
+    .map((p) => ({
+      lang,
+      title: p.title,
+      description: (p.description || (p.excerpt ? p.excerpt.replace(/<[^>]+>/g, "") : "")).trim(),
+      url: `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(p.key.replace(/\s+/g, "_"))}`,
+    }));
 }
 
-async function resolvePage(lang: "ko" | "en", query: string): Promise<WikipediaPage | null> {
+async function resolvePage(lang: "ko" | "en", query: string): Promise<PageResolution> {
   const direct = await getSummary(lang, query);
-  if (direct) return direct;
-  const matched = await searchTitle(lang, query);
-  if (!matched) return null;
-  return await getSummary(lang, matched);
+  if (direct.page || direct.isDisambiguation) return direct;
+  const matches = await searchCandidates(lang, query, 1);
+  if (matches.length === 0) return { page: null, isDisambiguation: false };
+  return await getSummary(lang, matches[0].title);
 }
 
 function decodeEntities(s: string): string {
@@ -170,12 +206,30 @@ export async function fetchWikipedia(
   ]);
 
   const [koFullText, enFullText] = await Promise.all([
-    ko ? getFullText("ko", ko.title) : Promise.resolve(null),
-    en ? getFullText("en", en.title) : Promise.resolve(null),
+    ko.page ? getFullText("ko", ko.page.title) : Promise.resolve(null),
+    en.page ? getFullText("en", en.page.title) : Promise.resolve(null),
   ]);
 
+  let disambiguation: DisambiguationCandidate[] = [];
+  if (!ko.page && !en.page && (ko.isDisambiguation || en.isDisambiguation)) {
+    const [koCands, enCands] = await Promise.all([
+      ko.isDisambiguation ? searchCandidates("ko", koQuery, 6) : Promise.resolve([]),
+      en.isDisambiguation ? searchCandidates("en", enQuery, 6) : Promise.resolve([]),
+    ]);
+    const seen = new Set<string>();
+    for (const c of [...koCands, ...enCands]) {
+      const key = `${c.lang}:${c.title.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        disambiguation.push(c);
+      }
+    }
+    disambiguation = disambiguation.slice(0, 8);
+  }
+
   return {
-    ko: ko ? { ...ko, fullText: koFullText } : null,
-    en: en ? { ...en, fullText: enFullText } : null,
+    ko: ko.page ? { ...ko.page, fullText: koFullText } : null,
+    en: en.page ? { ...en.page, fullText: enFullText } : null,
+    disambiguation,
   };
 }
