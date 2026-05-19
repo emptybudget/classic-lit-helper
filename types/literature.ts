@@ -18,6 +18,17 @@ export interface SymbolEntry {
   example: string;
 }
 
+export interface CharacterEntry {
+  name: string;
+  role: string;
+  description: string;
+}
+
+export interface QuoteEntry {
+  text: string;
+  context: string;
+}
+
 export interface CriticismEntry {
   critic: string;
   perspective: string;
@@ -30,7 +41,9 @@ export interface LiteratureResult {
   author: string | null;
   background: Background;
   author_info: AuthorInfo;
+  characters: CharacterEntry[];
   symbols: SymbolEntry[];
+  quotes: QuoteEntry[];
   criticism: CriticismEntry[];
   reading_tips: string | null;
 }

@@ -6,6 +6,7 @@ import type { LiteratureResult } from "@/types/literature";
 const TABS = [
   { id: "background", label: "사전지식" },
   { id: "author", label: "작가 정보" },
+  { id: "characters", label: "등장인물" },
   { id: "symbols", label: "상징 & 주제" },
   { id: "criticism", label: "평론" },
 ] as const;
@@ -102,6 +103,28 @@ export default function ResultTabs({ data }: { data: LiteratureResult }) {
           </section>
         )}
 
+        {tab === "characters" && (
+          <section>
+            {data.characters && data.characters.length > 0 ? (
+              <ul className="space-y-4">
+                {data.characters.map((c, i) => (
+                  <li key={i} className="border-l-2 border-paper-300 pl-4">
+                    <div className="flex flex-wrap items-baseline gap-x-3">
+                      <h4 className="font-semibold text-ink-900 text-lg">{c.name}</h4>
+                      {c.role && <span className="text-sm text-ink-700">{c.role}</span>}
+                    </div>
+                    {c.description && (
+                      <p className="mt-1 text-ink-900 leading-relaxed">{c.description}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-ink-700">발췌에서 추출할 등장인물 정보가 부족했어요.</p>
+            )}
+          </section>
+        )}
+
         {tab === "symbols" && (
           <section>
             {data.symbols && data.symbols.length > 0 ? (
@@ -152,8 +175,26 @@ export default function ResultTabs({ data }: { data: LiteratureResult }) {
         )}
       </div>
 
+      {data.quotes && data.quotes.length > 0 && (
+        <aside className="mt-8 p-5 sm:p-6 rounded-md bg-paper-50 border border-paper-300">
+          <h3 className="font-display text-lg text-ink-900 mb-3">핵심 인용</h3>
+          <ul className="space-y-4">
+            {data.quotes.map((q, i) => (
+              <li key={i}>
+                <blockquote className="text-ink-900 italic leading-relaxed">
+                  “{q.text}”
+                </blockquote>
+                {q.context && (
+                  <p className="mt-1 text-sm text-ink-700">— {q.context}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
+
       {data.reading_tips && (
-        <aside className="mt-8 p-5 sm:p-6 rounded-md bg-paper-100 border border-paper-200">
+        <aside className="mt-6 p-5 sm:p-6 rounded-md bg-paper-100 border border-paper-200">
           <h3 className="font-display text-lg text-ink-900 mb-2">읽기 길잡이</h3>
           <p className="text-ink-900 leading-relaxed">{data.reading_tips}</p>
         </aside>
