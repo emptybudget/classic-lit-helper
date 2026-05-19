@@ -331,8 +331,13 @@ function HomePageInner() {
 
       {state.kind === "success" && <ResultTabs data={state.data} />}
 
-      <footer className="mt-16 text-center text-xs text-ink-700/70">
-        Wikipedia · The Guardian · Gemini 2.5 Flash
+      <footer className="mt-16 text-center text-xs text-ink-700/70 space-y-2">
+        <div>
+          <Link href="/compare" className="underline hover:text-ink-900">
+            두 작품 비교 모드
+          </Link>
+        </div>
+        <div>Wikipedia · The Guardian · Gemini 2.5 Flash</div>
       </footer>
 
       <HelpModal
