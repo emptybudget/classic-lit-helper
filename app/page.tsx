@@ -68,10 +68,18 @@ export default function HomePage() {
         body: JSON.stringify({ title }),
       });
       const payload = (await res.json()) as
-        | { data: LiteratureResult; quota?: Quota }
-        | { error: string; rate_limited?: boolean; resetIn?: number };
+        | { data: LiteratureResult; quota?: Quota; cached?: boolean }
+        | { error: string; rate_limited?: boolean; quota_error?: boolean; resetIn?: number };
 
       if (!res.ok) {
+        if ("quota_error" in payload && payload.quota_error) {
+          setState({
+            kind: "quota_exceeded",
+            message:
+              "error" in payload ? payload.error : "AI 서비스 한도에 도달했어요.",
+          });
+          return;
+        }
         if (res.status === 429 || ("rate_limited" in payload && payload.rate_limited)) {
           setQuota((q) => (q ? { ...q, remaining: 0 } : { remaining: 0, limit: 5 }));
           setState({
@@ -210,6 +218,19 @@ export default function HomePage() {
               비밀번호로 5회 더 받기
             </button>
           </div>
+        </section>
+      )}
+
+      {state.kind === "quota_exceeded" && (
+        <section className="page-card p-6 sm:p-8">
+          <h2 className="font-semibold text-ink-900 mb-1">AI 서비스 한도에 도달했어요</h2>
+          <p className="text-ink-700 leading-relaxed">{state.message}</p>
+          <button
+            onClick={() => setState({ kind: "idle" })}
+            className="mt-4 text-sm underline text-accent-dark"
+          >
+            처음으로
+          </button>
         </section>
       )}
 

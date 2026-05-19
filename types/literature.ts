@@ -40,4 +40,5 @@ export type SearchState =
   | { kind: "loading" }
   | { kind: "success"; data: LiteratureResult }
   | { kind: "error"; message: string }
-  | { kind: "rate_limited"; message: string; resetIn?: number };
+  | { kind: "rate_limited"; message: string; resetIn?: number }
+  | { kind: "quota_exceeded"; message: string };
