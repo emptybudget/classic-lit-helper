@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchWikipedia } from "@/lib/wikipedia";
 import { fetchGuardianReviews } from "@/lib/guardian";
 import { summarizeLiterature, translateToEnglishTitle } from "@/lib/gemini";
-import { getClientIp, getRatelimit } from "@/lib/ratelimit";
+import { getClientIp, getRatelimit, SEARCH_LIMIT } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,9 +26,11 @@ export async function POST(req: Request) {
 
   const ip = getClientIp(req);
 
+  let remainingAfter = 0;
   try {
     const limiter = getRatelimit();
-    const { success, reset } = await limiter.limit(ip);
+    const { success, remaining, reset } = await limiter.limit(ip);
+    remainingAfter = remaining;
     if (!success) {
       const resetIn = Math.max(0, reset - Date.now());
       return NextResponse.json(
@@ -67,7 +69,10 @@ export async function POST(req: Request) {
 
   try {
     const data = await summarizeLiterature(query, wiki, guardian);
-    return NextResponse.json({ data });
+    return NextResponse.json({
+      data,
+      quota: { remaining: remainingAfter, limit: SEARCH_LIMIT },
+    });
   } catch (err) {
     console.error("gemini error", err);
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요.";

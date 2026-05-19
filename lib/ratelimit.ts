@@ -1,28 +1,54 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-let cached: Ratelimit | null = null;
+export const SEARCH_LIMIT = 5;
 
-export function getRatelimit(): Ratelimit {
-  if (cached) return cached;
+let redisCached: Redis | null = null;
+let searchCached: Ratelimit | null = null;
+let unlockCached: Ratelimit | null = null;
 
+function getRedis(): Redis {
+  if (redisCached) return redisCached;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
   if (!url || !token) {
     throw new Error("Upstash Redis credentials are not configured.");
   }
+  redisCached = new Redis({ url, token });
+  return redisCached;
+}
 
-  const redis = new Redis({ url, token });
-
-  cached = new Ratelimit({
-    redis,
-    limiter: Ratelimit.fixedWindow(5, "1 d"),
+export function getRatelimit(): Ratelimit {
+  if (searchCached) return searchCached;
+  searchCached = new Ratelimit({
+    redis: getRedis(),
+    limiter: Ratelimit.fixedWindow(SEARCH_LIMIT, "1 d"),
     analytics: false,
     prefix: "classic-lit-helper:rl",
   });
+  return searchCached;
+}
 
-  return cached;
+export function getUnlockLimiter(): Ratelimit {
+  if (unlockCached) return unlockCached;
+  unlockCached = new Ratelimit({
+    redis: getRedis(),
+    limiter: Ratelimit.fixedWindow(10, "1 h"),
+    analytics: false,
+    prefix: "classic-lit-helper:unlock",
+  });
+  return unlockCached;
+}
+
+export async function getSearchRemaining(
+  ip: string,
+): Promise<{ remaining: number; reset: number; limit: number }> {
+  const r = await getRatelimit().getRemaining(ip);
+  return { remaining: r.remaining, reset: r.reset, limit: SEARCH_LIMIT };
+}
+
+export async function resetSearchCounter(ip: string): Promise<void> {
+  await getRatelimit().resetUsedTokens(ip);
 }
 
 export function getClientIp(req: Request): string {

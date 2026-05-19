@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SearchForm from "@/components/SearchForm";
 import ResultTabs from "@/components/ResultTabs";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import HelpModal from "@/components/HelpModal";
+import UnlockModal from "@/components/UnlockModal";
 import type { LiteratureResult, SearchState } from "@/types/literature";
+
+interface Quota {
+  remaining: number;
+  limit: number;
+}
+
+const HELP_HIDE_KEY = "clh:help:hideDate";
 
 function formatResetIn(ms: number): string {
   if (!ms || ms <= 0) return "곧";
@@ -19,6 +28,34 @@ function formatResetIn(ms: number): string {
 export default function HomePage() {
   const [state, setState] = useState<SearchState>({ kind: "idle" });
   const [lastQuery, setLastQuery] = useState<string | null>(null);
+  const [quota, setQuota] = useState<Quota | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  const [showUnlock, setShowUnlock] = useState(false);
+
+  useEffect(() => {
+    try {
+      const today = new Date().toDateString();
+      const hidden = localStorage.getItem(HELP_HIDE_KEY);
+      if (hidden !== today) setShowHelp(true);
+    } catch {}
+    void fetchQuota();
+  }, []);
+
+  async function fetchQuota() {
+    try {
+      const res = await fetch("/api/quota");
+      if (!res.ok) return;
+      const data = (await res.json()) as { remaining: number; limit: number };
+      setQuota({ remaining: data.remaining, limit: data.limit });
+    } catch {}
+  }
+
+  function hideHelpToday() {
+    try {
+      localStorage.setItem(HELP_HIDE_KEY, new Date().toDateString());
+    } catch {}
+    setShowHelp(false);
+  }
 
   async function handleSearch(title: string) {
     setLastQuery(title);
@@ -29,16 +66,17 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title }),
       });
-
       const payload = (await res.json()) as
-        | { data: LiteratureResult }
+        | { data: LiteratureResult; quota?: Quota }
         | { error: string; rate_limited?: boolean; resetIn?: number };
 
       if (!res.ok) {
         if (res.status === 429 || ("rate_limited" in payload && payload.rate_limited)) {
+          setQuota((q) => (q ? { ...q, remaining: 0 } : { remaining: 0, limit: 5 }));
           setState({
             kind: "rate_limited",
-            message: "error" in payload ? payload.error : "오늘 검색 횟수를 모두 사용했어요.",
+            message:
+              "error" in payload ? payload.error : "오늘 검색 횟수를 모두 사용했어요.",
             resetIn: "resetIn" in payload ? payload.resetIn : undefined,
           });
           return;
@@ -52,6 +90,8 @@ export default function HomePage() {
 
       if ("data" in payload) {
         setState({ kind: "success", data: payload.data });
+        if (payload.quota) setQuota(payload.quota);
+        else void fetchQuota();
       } else {
         setState({ kind: "error", message: "응답 형식이 올바르지 않아요." });
       }
@@ -63,10 +103,37 @@ export default function HomePage() {
     }
   }
 
+  function handleUnlocked(remaining: number) {
+    setQuota({ remaining, limit: 5 });
+    setShowUnlock(false);
+    if (state.kind === "rate_limited") setState({ kind: "idle" });
+  }
+
   const disabled = state.kind === "loading";
 
   return (
-    <main className="mx-auto max-w-3xl px-5 py-12 sm:py-20">
+    <main className="mx-auto max-w-3xl px-5 py-10 sm:py-16">
+      <div className="flex items-center justify-end gap-2 mb-6">
+        {quota && (
+          <span
+            className="px-3 py-1 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700"
+            aria-label={`남은 검색 횟수 ${quota.remaining}회 / 총 ${quota.limit}회`}
+          >
+            남은 검색{" "}
+            <span className="text-ink-900 font-semibold">{quota.remaining}</span>
+            <span className="text-ink-700/60">/{quota.limit}</span>
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => setShowHelp(true)}
+          aria-label="사용 안내 열기"
+          className="w-8 h-8 rounded-full bg-paper-100 border border-paper-200 text-ink-700 hover:bg-paper-200 hover:text-ink-900 transition flex items-center justify-center font-semibold"
+        >
+          ?
+        </button>
+      </div>
+
       <header className="mb-10 sm:mb-14 text-center">
         <p className="font-display italic text-accent-dark text-sm tracking-widest uppercase">
           Classic Literature Helper
@@ -75,7 +142,7 @@ export default function HomePage() {
           고전문학 도우미
         </h1>
         <p className="mt-3 text-ink-700 leading-relaxed">
-          위키백과에서 발췌한 자료를 바탕으로 작품의 시대·작가·상징·평론을 한 페이지에 정리해 드려요.
+          위키백과와 The Guardian 발췌를 토대로 작품의 시대·작가·상징·평론을 한 페이지에 정리해 드려요.
         </p>
       </header>
 
@@ -122,17 +189,36 @@ export default function HomePage() {
           <p className="text-ink-700">{state.message}</p>
           {state.resetIn !== undefined && (
             <p className="mt-2 text-sm text-ink-700/80">
-              초기화: {formatResetIn(state.resetIn)}
+              자동 초기화: {formatResetIn(state.resetIn)}
             </p>
           )}
+          <div className="mt-5">
+            <button
+              onClick={() => setShowUnlock(true)}
+              className="px-5 py-2 rounded-md bg-accent-dark text-paper-50 text-sm hover:bg-ink-800 transition"
+            >
+              비밀번호로 5회 더 받기
+            </button>
+          </div>
         </section>
       )}
 
       {state.kind === "success" && <ResultTabs data={state.data} />}
 
       <footer className="mt-16 text-center text-xs text-ink-700/70">
-        Wikipedia · Gemini 2.5 Flash · 하루 5회 한도
+        Wikipedia · The Guardian · Gemini 2.5 Flash
       </footer>
+
+      <HelpModal
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+        onHideToday={hideHelpToday}
+      />
+      <UnlockModal
+        open={showUnlock}
+        onClose={() => setShowUnlock(false)}
+        onUnlocked={handleUnlocked}
+      />
     </main>
   );
 }
