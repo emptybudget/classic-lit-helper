@@ -337,7 +337,7 @@ function HomePageInner() {
             두 작품 비교 모드
           </Link>
         </div>
-        <div>Wikipedia · The Guardian · Gemini 2.5 Flash</div>
+        <div>Wikipedia · The Guardian · Gemini 2.5 Flash Lite</div>
       </footer>
 
       <HelpModal

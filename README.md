@@ -1,12 +1,12 @@
 # 고전문학 도우미 (Classic Literature Helper)
 
-위키백과에서 가져온 발췌를 **Google Gemini 2.5 Flash**가 정리해, 고전문학 작품 한 편의 **사전지식 · 작가 정보 · 상징 & 주제 · 평론**을 한 페이지에 보여 주는 Next.js 14 웹앱입니다.
+위키백과에서 가져온 발췌를 **Google Gemini 2.5 Flash Lite**가 정리해, 고전문학 작품 한 편의 **사전지식 · 작가 정보 · 상징 & 주제 · 평론**을 한 페이지에 보여 주는 Next.js 14 웹앱입니다.
 
 ## 기술 스택
 
 - Next.js 14 (App Router) + TypeScript + Tailwind CSS
 - 정보 수집: **Wikipedia REST API** (한/영) + (선택) **The Guardian Open Platform**
-- 영어 표제어 변환·요약: **Google Gemini API** (`gemini-2.5-flash`, 무료 티어)
+- 영어 표제어 변환·요약: **Google Gemini API** (`gemini-2.5-flash-lite`, 무료 티어 약 1,000 RPD)
 - Rate limit: **Upstash Redis** (IP당 하루 5회)
 - 배포: **Vercel**
 
@@ -40,7 +40,7 @@
 3. 한글 제목이면 Gemini로 영어 표제어 변환
 4. 영문 Wikipedia(주) + 한글 Wikipedia(보조) summary·본문 HTML 발췌, 본문은 "Themes/Reception/Legacy" 등 평론 관련 섹션을 우선 추출
 5. `GUARDIAN_API_KEY`가 있으면 The Guardian Books 섹션에서 관련 기사 발췌도 병렬 수집
-6. Gemini 2.5 Flash가 발췌를 근거로 평이한 한국어 JSON 한 개로 정리
+6. Gemini 2.5 Flash Lite가 발췌를 근거로 평이한 한국어 JSON 한 개로 정리
 7. 4개 탭(사전지식 · 작가 · 상징 · 평론) + 읽기 길잡이 배너로 렌더링
 
 ## API

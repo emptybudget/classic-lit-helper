@@ -3,7 +3,7 @@ import type { LiteratureResult } from "@/types/literature";
 import type { WikipediaBundle } from "@/lib/wikipedia";
 import type { GuardianArticle } from "@/lib/guardian";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-2.5-flash-lite";
 
 const TRANSLATE_PROMPT = `당신은 작품 제목 번역기입니다. 사용자가 입력한 작품 제목을 영문 위키백과에서 실제 사용되는 정확한 영어 표제어로 변환해 그 표제어만 반환하세요. 따옴표·구두점·설명·주석·여러 줄 금지. 이미 영어/라틴 알파벳이면 그대로 반환.`;
 
