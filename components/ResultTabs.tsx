@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { LiteratureResult } from "@/types/literature";
 
 const TABS = [
@@ -72,18 +73,37 @@ export default function ResultTabs({ data }: { data: LiteratureResult }) {
   return (
     <article className="page-card p-6 sm:p-10">
       <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-display text-3xl sm:text-4xl text-ink-900">{data.title}</h2>
-          {data.author && <p className="mt-2 text-ink-700 text-lg">{data.author}</p>}
+        <div className="flex gap-4 items-start min-w-0">
+          {data.cover_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={data.cover_url}
+              alt=""
+              loading="lazy"
+              className="shrink-0 w-20 sm:w-28 rounded shadow-sm border border-paper-200 bg-paper-100"
+            />
+          )}
+          <div className="min-w-0">
+            <h2 className="font-display text-3xl sm:text-4xl text-ink-900 break-keep">{data.title}</h2>
+            {data.author && <p className="mt-2 text-ink-700 text-lg">{data.author}</p>}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={handleShare}
-          className="shrink-0 px-3 py-1.5 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700 hover:bg-paper-200 hover:text-ink-900 transition"
-          aria-label="공유 링크 복사"
-        >
-          {copied ? "복사됨" : "공유 링크 복사"}
-        </button>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleShare}
+            className="px-3 py-1.5 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700 hover:bg-paper-200 hover:text-ink-900 transition"
+            aria-label="공유 링크 복사"
+          >
+            {copied ? "복사됨" : "공유 링크 복사"}
+          </button>
+          <Link
+            href={`/compare?a=${encodeURIComponent(data.title)}`}
+            className="px-3 py-1.5 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700 hover:bg-paper-200 hover:text-ink-900 transition"
+          >
+            비교하기
+          </Link>
+        </div>
       </header>
 
       <nav className="flex flex-wrap gap-1 sm:gap-3 border-b border-paper-200 mb-6">
@@ -220,6 +240,27 @@ export default function ResultTabs({ data }: { data: LiteratureResult }) {
         <aside className="mt-6 p-5 sm:p-6 rounded-md bg-paper-100 border border-paper-200">
           <h3 className="font-display text-lg text-ink-900 mb-2">읽기 길잡이</h3>
           <p className="text-ink-900 leading-relaxed">{data.reading_tips}</p>
+        </aside>
+      )}
+
+      {data.recommendations && data.recommendations.length > 0 && (
+        <aside className="mt-6">
+          <h3 className="font-display text-lg text-ink-900 mb-3">함께 읽어 볼 만한 작품</h3>
+          <ul className="grid sm:grid-cols-2 gap-3">
+            {data.recommendations.map((r, i) => (
+              <li key={`${r.title}-${i}`}>
+                <Link
+                  href={`/work/${encodeURIComponent(r.title)}`}
+                  className="block p-4 rounded-md bg-paper-50 border border-paper-200 hover:border-paper-300 hover:bg-paper-100 transition"
+                >
+                  <div className="font-semibold text-ink-900">{r.title}</div>
+                  {r.why && (
+                    <p className="text-sm text-ink-700 mt-1 leading-relaxed">{r.why}</p>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </aside>
       )}
     </article>

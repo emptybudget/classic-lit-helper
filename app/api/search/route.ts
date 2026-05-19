@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { LiteratureResult } from "@/types/literature";
 import { fetchWikipedia } from "@/lib/wikipedia";
 import { fetchGuardianReviews } from "@/lib/guardian";
+import { fetchCoverUrl } from "@/lib/openlibrary";
 import { summarizeLiterature, translateToEnglishTitle } from "@/lib/gemini";
 import { getClientIp, getRatelimit, isAdmin, SEARCH_LIMIT } from "@/lib/ratelimit";
 import { getCachedResult, setCachedResult } from "@/lib/cache";
@@ -99,6 +100,8 @@ export async function POST(req: Request) {
     if (quotaResp) return quotaResp;
   }
 
+  const coverPromise = fetchCoverUrl(englishTitle, query).catch(() => null);
+
   const [wiki, guardian] = await Promise.all([
     fetchWikipedia(query, englishTitle),
     fetchGuardianReviews(englishTitle).catch(() => []),
@@ -124,6 +127,8 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+
+  data.cover_url = await coverPromise;
 
   void setCachedResult(query, data);
 

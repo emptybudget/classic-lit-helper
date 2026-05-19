@@ -36,15 +36,22 @@ export interface CriticismEntry {
   source: string;
 }
 
+export interface RecommendationEntry {
+  title: string;
+  why: string;
+}
+
 export interface LiteratureResult {
   title: string;
   author: string | null;
+  cover_url: string | null;
   background: Background;
   author_info: AuthorInfo;
   characters: CharacterEntry[];
   symbols: SymbolEntry[];
   quotes: QuoteEntry[];
   criticism: CriticismEntry[];
+  recommendations: RecommendationEntry[];
   reading_tips: string | null;
 }
 
