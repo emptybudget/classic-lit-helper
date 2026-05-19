@@ -10,8 +10,8 @@ import {
 
 export const runtime = "nodejs";
 
-const NORMAL_PASSWORD = "민재짱";
-const ADMIN_PASSWORD = "관리자";
+const NORMAL_PASSWORD = "mjzzang";
+const ADMIN_PASSWORD = "grz";
 
 export async function POST(req: Request) {
   let body: unknown;
