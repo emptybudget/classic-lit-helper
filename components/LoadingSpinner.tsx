@@ -25,10 +25,7 @@ export default function LoadingSpinner() {
         <div className="absolute inset-0 rounded-full border-2 border-paper-300" />
         <div className="absolute inset-0 rounded-full border-2 border-t-accent-dark border-transparent animate-spin" />
       </div>
-      <p
-        key={label}
-        className="text-ink-700 text-sm sm:text-base text-center animate-[fade_300ms_ease-out]"
-      >
+      <p key={label} className="text-ink-700 text-sm sm:text-base text-center">
         {label}
       </p>
       <p className="text-xs text-ink-700/60">보통 10~15초 정도 걸려요</p>

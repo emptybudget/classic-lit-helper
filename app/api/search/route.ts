@@ -68,18 +68,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ data: cachedResult, quota, cached: true });
   }
 
-  let resetTime = 0;
   if (!admin) {
     try {
       const r = await getRatelimit().getRemaining(ip);
-      resetTime = r.reset;
       if (r.remaining <= 0) {
-        const resetIn = Math.max(0, resetTime - Date.now());
+        const resetIn = Math.max(0, r.reset - Date.now());
         return NextResponse.json(
           {
             error: "오늘 검색 횟수(5회)를 모두 사용했어요.",
             rate_limited: true,
-            reset: resetTime,
+            reset: r.reset,
             resetIn,
           },
           { status: 429 },
