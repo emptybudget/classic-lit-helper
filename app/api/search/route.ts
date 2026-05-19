@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchWikipedia } from "@/lib/wikipedia";
 import { fetchGuardianReviews } from "@/lib/guardian";
 import { summarizeLiterature, translateToEnglishTitle } from "@/lib/gemini";
-import { getClientIp, getRatelimit, SEARCH_LIMIT } from "@/lib/ratelimit";
+import { getClientIp, getRatelimit, isAdmin, SEARCH_LIMIT } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,21 +27,25 @@ export async function POST(req: Request) {
   const ip = getClientIp(req);
 
   let remainingAfter = 0;
+  let admin = false;
   try {
-    const limiter = getRatelimit();
-    const { success, remaining, reset } = await limiter.limit(ip);
-    remainingAfter = remaining;
-    if (!success) {
-      const resetIn = Math.max(0, reset - Date.now());
-      return NextResponse.json(
-        {
-          error: "오늘 검색 횟수(5회)를 모두 사용했어요.",
-          rate_limited: true,
-          reset,
-          resetIn,
-        },
-        { status: 429 },
-      );
+    admin = await isAdmin(ip);
+    if (!admin) {
+      const limiter = getRatelimit();
+      const { success, remaining, reset } = await limiter.limit(ip);
+      remainingAfter = remaining;
+      if (!success) {
+        const resetIn = Math.max(0, reset - Date.now());
+        return NextResponse.json(
+          {
+            error: "오늘 검색 횟수(5회)를 모두 사용했어요.",
+            rate_limited: true,
+            reset,
+            resetIn,
+          },
+          { status: 429 },
+        );
+      }
     }
   } catch (err) {
     console.error("ratelimit error", err);
@@ -71,7 +75,9 @@ export async function POST(req: Request) {
     const data = await summarizeLiterature(query, wiki, guardian);
     return NextResponse.json({
       data,
-      quota: { remaining: remainingAfter, limit: SEARCH_LIMIT },
+      quota: admin
+        ? { remaining: -1, limit: -1, admin: true }
+        : { remaining: remainingAfter, limit: SEARCH_LIMIT },
     });
   } catch (err) {
     console.error("gemini error", err);

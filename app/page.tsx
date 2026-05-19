@@ -11,6 +11,7 @@ import type { LiteratureResult, SearchState } from "@/types/literature";
 interface Quota {
   remaining: number;
   limit: number;
+  admin?: boolean;
 }
 
 const HELP_HIDE_KEY = "clh:help:hideDate";
@@ -45,8 +46,8 @@ export default function HomePage() {
     try {
       const res = await fetch("/api/quota");
       if (!res.ok) return;
-      const data = (await res.json()) as { remaining: number; limit: number };
-      setQuota({ remaining: data.remaining, limit: data.limit });
+      const data = (await res.json()) as { remaining: number; limit: number; admin?: boolean };
+      setQuota({ remaining: data.remaining, limit: data.limit, admin: data.admin });
     } catch {}
   }
 
@@ -103,8 +104,8 @@ export default function HomePage() {
     }
   }
 
-  function handleUnlocked(remaining: number) {
-    setQuota({ remaining, limit: 5 });
+  function handleUnlocked(remaining: number, admin: boolean) {
+    setQuota({ remaining, limit: admin ? -1 : 5, admin });
     setShowUnlock(false);
     if (state.kind === "rate_limited") setState({ kind: "idle" });
   }
@@ -115,14 +116,23 @@ export default function HomePage() {
     <main className="mx-auto max-w-3xl px-5 py-10 sm:py-16">
       <div className="flex items-center justify-end gap-2 mb-6">
         {quota && (
-          <span
-            className="px-3 py-1 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700"
-            aria-label={`남은 검색 횟수 ${quota.remaining}회 / 총 ${quota.limit}회`}
-          >
-            남은 검색{" "}
-            <span className="text-ink-900 font-semibold">{quota.remaining}</span>
-            <span className="text-ink-700/60">/{quota.limit}</span>
-          </span>
+          quota.admin ? (
+            <span
+              className="px-3 py-1 text-xs sm:text-sm rounded-full bg-ink-900 text-paper-50 border border-ink-800"
+              aria-label="관리자 모드: 무제한 검색"
+            >
+              관리자 · <span className="font-semibold">무제한</span>
+            </span>
+          ) : (
+            <span
+              className="px-3 py-1 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700"
+              aria-label={`남은 검색 횟수 ${quota.remaining}회 / 총 ${quota.limit}회`}
+            >
+              남은 검색{" "}
+              <span className="text-ink-900 font-semibold">{quota.remaining}</span>
+              <span className="text-ink-700/60">/{quota.limit}</span>
+            </span>
+          )
         )}
         <button
           type="button"

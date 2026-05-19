@@ -3,9 +3,13 @@ import { Redis } from "@upstash/redis";
 
 export const SEARCH_LIMIT = 5;
 
+const ADMIN_TTL_SECONDS = 7 * 24 * 60 * 60;
+const ADMIN_KEY_PREFIX = "classic-lit-helper:admin:";
+
 let redisCached: Redis | null = null;
 let searchCached: Ratelimit | null = null;
 let unlockCached: Ratelimit | null = null;
+let unlockDailyCached: Ratelimit | null = null;
 
 function getRedis(): Redis {
   if (redisCached) return redisCached;
@@ -38,6 +42,30 @@ export function getUnlockLimiter(): Ratelimit {
     prefix: "classic-lit-helper:unlock",
   });
   return unlockCached;
+}
+
+export function getUnlockDailyLimiter(): Ratelimit {
+  if (unlockDailyCached) return unlockDailyCached;
+  unlockDailyCached = new Ratelimit({
+    redis: getRedis(),
+    limiter: Ratelimit.fixedWindow(1, "1 d"),
+    analytics: false,
+    prefix: "classic-lit-helper:unlock-daily",
+  });
+  return unlockDailyCached;
+}
+
+export async function isAdmin(ip: string): Promise<boolean> {
+  try {
+    const v = await getRedis().get(`${ADMIN_KEY_PREFIX}${ip}`);
+    return v !== null;
+  } catch {
+    return false;
+  }
+}
+
+export async function setAdmin(ip: string): Promise<void> {
+  await getRedis().set(`${ADMIN_KEY_PREFIX}${ip}`, "1", { ex: ADMIN_TTL_SECONDS });
 }
 
 export async function getSearchRemaining(

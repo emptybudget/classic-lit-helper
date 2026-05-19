@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 interface Props {
   open: boolean;
   onClose: () => void;
-  onUnlocked: (remaining: number) => void;
+  onUnlocked: (remaining: number, admin: boolean) => void;
 }
 
 export default function UnlockModal({ open, onClose, onUnlocked }: Props) {
@@ -49,13 +49,14 @@ export default function UnlockModal({ open, onClose, onUnlocked }: Props) {
       const data = (await res.json()) as {
         ok?: boolean;
         remaining?: number;
+        admin?: boolean;
         error?: string;
       };
       if (!res.ok || !data.ok) {
         setError(data.error ?? "비밀번호가 달라요.");
         return;
       }
-      onUnlocked(data.remaining ?? 5);
+      onUnlocked(data.remaining ?? 5, data.admin === true);
     } catch {
       setError("네트워크 오류가 발생했어요.");
     } finally {
