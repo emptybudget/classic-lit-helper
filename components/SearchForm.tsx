@@ -8,10 +8,16 @@ interface Props {
   onSubmit: (title: string) => void;
   disabled?: boolean;
   showExamples?: boolean;
+  initialValue?: string;
 }
 
-export default function SearchForm({ onSubmit, disabled, showExamples = true }: Props) {
-  const [value, setValue] = useState("");
+export default function SearchForm({
+  onSubmit,
+  disabled,
+  showExamples = true,
+  initialValue = "",
+}: Props) {
+  const [value, setValue] = useState(initialValue);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();

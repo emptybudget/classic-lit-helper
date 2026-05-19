@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import SearchForm from "@/components/SearchForm";
 import ResultTabs from "@/components/ResultTabs";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -31,6 +32,16 @@ function formatResetIn(ms: number): string {
 }
 
 export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageInner />
+    </Suspense>
+  );
+}
+
+function HomePageInner() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
   const [state, setState] = useState<SearchState>({ kind: "idle" });
   const [lastQuery, setLastQuery] = useState<string | null>(null);
   const [quota, setQuota] = useState<Quota | null>(null);
@@ -180,6 +191,7 @@ export default function HomePage() {
           onSubmit={handleSearch}
           disabled={disabled}
           showExamples={state.kind === "idle"}
+          initialValue={initialQuery}
         />
       </section>
 

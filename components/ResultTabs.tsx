@@ -55,12 +55,35 @@ function Field({ label, value }: { label: string; value: string | null | undefin
 
 export default function ResultTabs({ data }: { data: LiteratureResult }) {
   const [tab, setTab] = useState<TabId>("background");
+  const [copied, setCopied] = useState(false);
+
+  async function handleShare() {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/work/${encodeURIComponent(data.title)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt("링크를 복사하세요:", url);
+    }
+  }
 
   return (
     <article className="page-card p-6 sm:p-10">
-      <header className="mb-6">
-        <h2 className="font-display text-3xl sm:text-4xl text-ink-900">{data.title}</h2>
-        {data.author && <p className="mt-2 text-ink-700 text-lg">{data.author}</p>}
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-3xl sm:text-4xl text-ink-900">{data.title}</h2>
+          {data.author && <p className="mt-2 text-ink-700 text-lg">{data.author}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={handleShare}
+          className="shrink-0 px-3 py-1.5 text-xs sm:text-sm rounded-full bg-paper-100 border border-paper-200 text-ink-700 hover:bg-paper-200 hover:text-ink-900 transition"
+          aria-label="공유 링크 복사"
+        >
+          {copied ? "복사됨" : "공유 링크 복사"}
+        </button>
       </header>
 
       <nav className="flex flex-wrap gap-1 sm:gap-3 border-b border-paper-200 mb-6">

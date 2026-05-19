@@ -33,7 +33,15 @@ export async function getCachedResult(title: string): Promise<LiteratureResult |
 
 export async function setCachedResult(title: string, data: LiteratureResult): Promise<void> {
   try {
-    await getRedis().set(keyOf(title), data, { ex: TTL_SECONDS });
+    const r = getRedis();
+    const primary = keyOf(title);
+    await r.set(primary, data, { ex: TTL_SECONDS });
+    if (data.title) {
+      const titleKey = keyOf(data.title);
+      if (titleKey !== primary) {
+        await r.set(titleKey, data, { ex: TTL_SECONDS });
+      }
+    }
   } catch (err) {
     console.error("cache write error", err);
   }
